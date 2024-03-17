@@ -1,0 +1,6 @@
+evaluate
+nltk
+rouge_score
+torch
+transformers
+textsum

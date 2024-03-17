@@ -6,7 +6,6 @@ import json
 with open ("data/ff7_data.json") as dialogue_data:
   data = json.load(dialogue_data)
 
-
 def check_string(line):
   if 'LOCATION' in line:
     return False
@@ -14,7 +13,6 @@ def check_string(line):
     return False
   else:
     return True
-
 
 for counter,line in enumerate(data['text']):
   if counter < 10:
