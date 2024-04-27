@@ -1,75 +1,83 @@
 import torch
 from transformers import pipeline
 from textsum.summarize import Summarizer
-import time
+import json
 
+def main(max_dialogue_length):
+  # select a model to use
+  which_model = 1
+  if which_model == 0:
+    model_name = 'pszemraj/led-large-book-summary' # slow
+  elif which_model == 1:
+    model_name = 'gauravkoradiya/T5-Finetuned-Summarization-DialogueDataset' # fast
 
-# select a model to use
-which_model = 0
-if which_model == 0:
-  model_name = 'pszemraj/led-large-book-summary' # slow
-elif which_model == 1:
-  model_name = 'Falconsai/text_summarization' # fast
-elif which_model == 2:
-  model_name = 'chanifrusydi/t5-dialogue-summarization' # fast
-elif which_model == 3:
-  model_name = 'pszemraj/long-t5-tglobal-xl-16384-book-summary' 
-elif which_model == 4:
-  model_name = 'pszemraj/long-t5-tglobal-base-16384-book-summary' # slow
-elif which_model == 5:
-  model_name = 'gauravkoradiya/T5-Finetuned-Summarization-DialogueDataset' # fast
-elif which_model == 6: # not working
-  model_name = 'facebook/bart-large-cnn'
+  dialogue_text = ''  # text to be summarized
+  with open ("data/ff7_data.json") as dialogue_data:
+    data = json.load(dialogue_data)
 
-# retrieve the summarizer
-summarizer = pipeline(
-  "summarization",
-  model_name,
-  device=0 if torch.cuda.is_available() else -1,
-)
+  # determine action on a given line of text
+  # 0=action(dialogue not by a character)
+  # 1=location
+  # 2=choice
+  # 3=dialogue(dialogue by a character)
+  def which_action(line):
+    if 'ACTION' in line:
+      return 0
+    elif 'LOCATION' in line:
+      return 1
+    elif 'CHOICE' in line:
+      return 2
+    else:
+      return 3
 
-start_time = time.time()
-# read the input dialogue
-dialogue = """ """
-with open('data/input_text_example_ff7.txt', 'r',encoding='utf-8') as dialogue_text:
-  for line in dialogue_text:
-    dialogue += line
+  # characters that can/should be removed from string
+  remove_characters = [('{', ''),('}', '')]
 
-dialogue_time = time.time()
+  # create empty file
+  with open(f'data/ff7_summary_pred_{which_model}.txt', 'w',encoding="utf-8") as pred_file:
+    pass
 
-# create the results and set the parameters
-result = summarizer(
-    dialogue,
-    min_length=16,
-    max_length=256,
-    no_repeat_ngram_size=3,
-    encoder_no_repeat_ngram_size=3,
-    repetition_penalty=3.5,
-    num_beams=4,
-    early_stopping=True,
-)
-# show result
-sum_time_1 = time.time()
+  # initialize textsum method to summarize
+  summarizer = Summarizer(
+      model_name_or_path=model_name,  # you can use any Seq2Seq model on the Hub
+      token_batch_length=max_dialogue_length,  # tokens to batch summarize at a time, up to 16384,
+  )
 
-# textsum method to summarize
-summarizer = Summarizer(
-    model_name_or_path=model_name,  # you can use any Seq2Seq model on the Hub
-    token_batch_length=4096,  # tokens to batch summarize at a time, up to 16384
-)
+  for counter,line in enumerate(data['text']):
+    if counter < 200:
+      # convert dict to str
+      line = str(line)
 
-sum_time_2 = time.time()
-out_str = summarizer.summarize_string(dialogue)
+      # filter on certain action
+      action =  which_action(line)
 
-with open(f'data/ff7_summary_pred_{which_model}.txt', 'w',encoding="utf-8") as pred_file:
-  pred_file.write(out_str)
+      # TODO fix CHOICE(2) action
+      if(action in [0,1,3]):
 
+        # remove characters for formatting
+        for char, replacement in remove_characters:
+          if char in line:
+            line = line.replace(char, replacement)
 
+        # split line into action 
+        action, sentence = line.split(":",1)      
 
-print(result)
-print('--------------')
-print(f"summary: {out_str}")
+        if (len(dialogue_text) <= max_dialogue_length):
+          dialogue_text += sentence
+        else:
+          print(dialogue_text)
+          out_str = summarizer.summarize_string(dialogue_text)
+          with open(f'data/ff7_summary_pred_{which_model}.txt', 'a',encoding="utf-8") as pred_file:
+            pred_file.write(f"{out_str} \n")
+            
+          dialogue_text = ''
 
-print('--------------')
-print(f'time for reading dialogue: \t {dialogue_time-start_time}')
-print(f'time for sum1: \t {sum_time_1-dialogue_time}')
-print(f'time for sum2: \t {sum_time_2-sum_time_1}')
+  # summarize last bit of dialogue
+  if len(dialogue_text) != 0:
+    out_str = summarizer.summarize_string(dialogue_text)
+    with open(f'data/ff7_summary_pred_{which_model}.txt', 'a',encoding="utf-8") as pred_file:
+      pred_file.write(f"{out_str} \n")
+
+if __name__ == '__main__':
+  max_dialogue_length = 4096  # max character length of dialogue summary
+  main(max_dialogue_length)
