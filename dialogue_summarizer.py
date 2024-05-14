@@ -23,6 +23,7 @@ def main(args):
   which_model = args.m            # which model to use
   max_dialogue_length = args.mdl  # max character length of dialogue summary
   which_preprocess = args.pp      # which preprocess to use
+  which_act = args.wa             # which act to summarize in ff7
 
   # select a model to use
   if which_model == 0:
@@ -31,14 +32,14 @@ def main(args):
     model_name = 'gauravkoradiya/T5-Finetuned-Summarization-DialogueDataset' # fast
 
   dialogue_text = ''  # text to be summarized
-  with open ("data/ff7_data.json") as dialogue_data:
+  with open (f"data/ff7_data_act{which_act}.json") as dialogue_data:
     data = json.load(dialogue_data)
 
   # characters that can/should be removed from string
   remove_characters = [('{', ''),('}', '')]
 
   # create empty file
-  with open(f'data/ff7_summary_pred_process({which_preprocess})_model({which_model}).txt', 'w',encoding="utf-8") as pred_file:
+  with open(f'pred/ff7act{which_act}_summary_pred_process({which_preprocess})_model({which_model}).txt', 'w',encoding="utf-8") as pred_file:
     pass
 
   # initialize textsum method to summarize
@@ -48,7 +49,7 @@ def main(args):
   )
 
   for counter,line in enumerate(data['text']):
-    if counter < 200:
+    # if counter < 200:
       # convert dict to str
       line = str(line)
 
@@ -84,7 +85,7 @@ def main(args):
           #   pass
           print(dialogue_text)
           out_str = summarizer.summarize_string(dialogue_text)
-          with open(f'data/ff7_summary_pred_{which_model}.txt', 'a',encoding="utf-8") as pred_file:
+          with open(f'pred/ff7act{which_act}_summary_pred_process({which_preprocess})_model({which_model}).txt', 'a',encoding="utf-8") as pred_file:
             pred_file.write(f"{out_str} \n")
             
           dialogue_text = ''
@@ -92,7 +93,7 @@ def main(args):
   # summarize last bit of dialogue
   if len(dialogue_text) != 0:
     out_str = summarizer.summarize_string(dialogue_text)
-    with open(f'data/ff7_summary_pred_process({which_preprocess})_model({which_model}).txt', 'a',encoding="utf-8") as pred_file:
+    with open(f'pred/ff7act{which_act}_summary_pred_process({which_preprocess})_model({which_model}).txt', 'a',encoding="utf-8") as pred_file:
       pred_file.write(f"{out_str} \n")
 
 # read arguments from command line
@@ -101,6 +102,7 @@ def read_args():
   
   parser.add_argument('-m', '-model', type = int, help='model used: 0:led-large-book-summary,1:T5-Finetuned-Summarization-DialogueDataset', choices=[0,1], default=1)
   parser.add_argument('-mdl', '-max_dialogue_length', type = int, help='max character length of dialogue summary', choices=[2048,4096], default=4096)
+  parser.add_argument('-wa', '-which_act', type = int, help='act to summarize in ff7', choices=[1,2,3,4], default=1)
   parser.add_argument('-pp', '-preprocess', help='which preprocess', choices=['none', 'no_name','name_explicit', 'context'], default='none')
   
   return parser.parse_args()
