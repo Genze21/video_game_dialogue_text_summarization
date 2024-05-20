@@ -10,14 +10,41 @@ import argparse
 # 2=choice
 # 3=dialogue(dialogue by a character)
 def which_action(line):
-  if 'ACTION' in line:
+  if 'CHOICE' in line:
+    return 2
+  elif 'ACTION' in line:
     return 0
   elif 'LOCATION' in line:
     return 1
-  elif 'CHOICE' in line:
-    return 2
   else:
     return 3
+
+# removes some character from a string for better formatting
+def remove_characters(line, separator_1='{',separator_2='}'):
+  # characters that can/should be removed from string
+  characters_to_remove = [(separator_1, ''),(separator_2, '')]
+
+  # remove characters for better formatting
+  for char, replacement in characters_to_remove:
+    if char in line:
+      line = line.replace(char, replacement)
+
+  return line
+
+# applies a preprocess to the selected dialogue
+# none: no preprocessing
+# no_name: remove names
+# name_explicit: add names explicitly i.e. "xxx", says char A
+def apply_preprocess(which_preprocess,sentence,dialogue_type,action):
+  dialogue_text = ''
+  # add dialogue to be summarized
+  if which_preprocess == "no_name" or which_preprocess == "none" or (which_preprocess == "name_explicit" and dialogue_type != 3):
+    dialogue_text += sentence
+  # add names explicitly 
+  elif which_preprocess == "name_explicit" and dialogue_type == 3:
+    dialogue_text += f"{sentence}, says {action}."
+  
+  return dialogue_text
 
 def main(args):
   which_model = args.m            # which model to use
@@ -34,9 +61,6 @@ def main(args):
   dialogue_text = ''  # text to be summarized
   with open (f"data/ff7_data_act{which_act}.json") as dialogue_data:
     data = json.load(dialogue_data)
-
-  # characters that can/should be removed from string
-  remove_characters = [('{', ''),('}', '')]
 
   # create empty file
   with open(f'pred/ff7act{which_act}_summary_pred_process({which_preprocess})_model({which_model}).txt', 'w',encoding="utf-8") as pred_file:
@@ -56,27 +80,30 @@ def main(args):
       # filter on certain action
       dialogue_type =  which_action(line)
 
-      # TODO fix CHOICE(2) action
-      if(dialogue_type in [0,1,3]):
+      if(dialogue_type in [0,1,2,3]):
         if which_preprocess == "none":
           sentence = line
+          action = 'none'
         else:
-          # remove characters for better formatting
-          for char, replacement in remove_characters:
-            if char in line:
-              line = line.replace(char, replacement)
-
+          line = remove_characters(line)
           # split line into action 
-          action, sentence = line.split(":",1)      
+          action, sentence = line.split(":",1)    
+
+        # CHOICE(2) action, selects the first choice available in splits it into separate dialogue prompts. 
+        if dialogue_type == 2:
+          line_split = sentence.split('],')       # split choices
+          line_split = remove_characters(line_split[0],'[',']') 
+          choices_split = line_split.split("',")  # split prompts
+          if len(choices_split)==1:
+            choices_split = line_split.split('",')
 
         # add line of dialogue until limit
         if (len(dialogue_text) <= max_dialogue_length):
-          # add dialogue to be summarized
-          if which_preprocess == "no_name" or which_preprocess == "none" or (which_preprocess == "name_explicit" and dialogue_type != 3):
-            dialogue_text += sentence
-          # add names explicitly 
-          elif which_preprocess == "name_explicit" and dialogue_type == 3:
-            dialogue_text += f"{sentence}, says {action}."
+          if dialogue_type != 2:
+            dialogue_text += apply_preprocess(which_preprocess,sentence,dialogue_type,action)
+          if dialogue_type == 2:
+            for choice in choices_split:
+              dialogue_text += apply_preprocess(which_preprocess,choice,dialogue_type,action)
 
         # sent dialogue to summarizer and reset the dialogue
         else:

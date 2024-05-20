@@ -1,0 +1,12 @@
+Model:'gauravkoradiya/T5-Finetuned-Summarization-DialogueDataset' # fast
+act 1
+none: rouge1: 0.143    rouge2: 0.027   rougeL: 0.133   rougeLsum: 0.133
+no_name: rouge1: 0.217    rouge2: 0.020   rougeL: 0.152   rougeLsum: 0.152
+name_explicit: rouge1: 0.128    rouge2: 0.000   rougeL: 0.104   rougeLsum: 0.104
+
+           
+Model:'pszemraj/led-large-book-summary' # slow
+act 1
+none: rouge1: 0.216    rouge2: 0.018   rougeL: 0.126   rougeLsum: 0.126
+no_name: rouge1: 0.217    rouge2: 0.020   rougeL: 0.152   rougeLsum: 0.152
+name_explicit: rouge1: 0.250    rouge2: 0.022   rougeL: 0.130   rougeLsum: 0.130
