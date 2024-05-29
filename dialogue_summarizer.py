@@ -1,4 +1,3 @@
-import torch
 from transformers import pipeline
 from textsum.summarize import Summarizer
 import json
@@ -63,7 +62,7 @@ def main(args):
     data = json.load(dialogue_data)
 
   # create empty file
-  with open(f'pred/ff7act{which_act}_summary_pred_process({which_preprocess})_model({which_model}).txt', 'w',encoding="utf-8") as pred_file:
+  with open(f'pred/ff7act{which_act}_summary_pred_process({which_preprocess})_model({which_model})_length({max_dialogue_length}).txt', 'w',encoding="utf-8") as pred_file:
     pass
 
   # initialize textsum method to summarize
@@ -72,55 +71,51 @@ def main(args):
     token_batch_length=max_dialogue_length,  # tokens to batch summarize at a time, up to 16384,
   )
 
-  for counter,line in enumerate(data['text']):
-    # if counter < 200:
-      # convert dict to str
-      line = str(line)
+  for line in (data['text']):
+    # convert dict to str
+    line = str(line)
 
-      # filter on certain action
-      dialogue_type =  which_action(line)
+    # filter on certain action
+    dialogue_type =  which_action(line)
 
-      if(dialogue_type in [0,1,2,3]):
-        if which_preprocess == "none":
-          sentence = line
-          action = 'none'
-        else:
-          line = remove_characters(line)
-          # split line into action 
-          action, sentence = line.split(":",1)    
+    if(dialogue_type in [0,1,2,3]):
+      if which_preprocess == "none":
+        sentence = line
+        action = 'none'
+      else:
+        line = remove_characters(line)
+        # split line into action 
+        action, sentence = line.split(":",1)    
 
-        # CHOICE(2) action, selects the first choice available in splits it into separate dialogue prompts. 
+      # CHOICE(2) action, selects the first choice available in splits it into separate dialogue prompts. 
+      if dialogue_type == 2:
+        line_split = sentence.split('],')       # split choices
+        line_split = remove_characters(line_split[0],'[',']') 
+        choices_split = line_split.split("',")  # split prompts
+        if len(choices_split)==1:
+          choices_split = line_split.split('",')
+
+      # add line of dialogue until limit
+      if (len(dialogue_text) <= max_dialogue_length):
+        if dialogue_type != 2:
+          dialogue_text += apply_preprocess(which_preprocess,sentence,dialogue_type,action)
         if dialogue_type == 2:
-          line_split = sentence.split('],')       # split choices
-          line_split = remove_characters(line_split[0],'[',']') 
-          choices_split = line_split.split("',")  # split prompts
-          if len(choices_split)==1:
-            choices_split = line_split.split('",')
+          for choice in choices_split:
+            dialogue_text += apply_preprocess(which_preprocess,choice,dialogue_type,action)
 
-        # add line of dialogue until limit
-        if (len(dialogue_text) <= max_dialogue_length):
-          if dialogue_type != 2:
-            dialogue_text += apply_preprocess(which_preprocess,sentence,dialogue_type,action)
-          if dialogue_type == 2:
-            for choice in choices_split:
-              dialogue_text += apply_preprocess(which_preprocess,choice,dialogue_type,action)
-
-        # sent dialogue to summarizer and reset the dialogue
-        else:
-          # TODO add context to the dialogue
-          # if which_preprocess == "context":
-          #   pass
-          print(dialogue_text)
-          out_str = summarizer.summarize_string(dialogue_text)
-          with open(f'pred/ff7act{which_act}_summary_pred_process({which_preprocess})_model({which_model}).txt', 'a',encoding="utf-8") as pred_file:
-            pred_file.write(f"{out_str} \n")
-            
-          dialogue_text = ''
+      # sent dialogue to summarizer and reset the dialogue
+      else:
+        print(dialogue_text)
+        out_str = summarizer.summarize_string(dialogue_text)
+        with open(f'pred/ff7act{which_act}_summary_pred_process({which_preprocess})_model({which_model})_length({max_dialogue_length}).txt', 'a',encoding="utf-8") as pred_file:
+          pred_file.write(f"{out_str} \n")
+          
+        dialogue_text = ''
 
   # summarize last bit of dialogue
   if len(dialogue_text) != 0:
     out_str = summarizer.summarize_string(dialogue_text)
-    with open(f'pred/ff7act{which_act}_summary_pred_process({which_preprocess})_model({which_model}).txt', 'a',encoding="utf-8") as pred_file:
+    with open(f'pred/ff7act{which_act}_summary_pred_process({which_preprocess})_model({which_model})_length({max_dialogue_length}).txt', 'a',encoding="utf-8") as pred_file:
       pred_file.write(f"{out_str} \n")
 
 # read arguments from command line
