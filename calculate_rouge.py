@@ -36,7 +36,7 @@ def read_args():
   parser.add_argument('-m', '-model', type = int, help='model used: 0:led-large-book-summary,1:T5-Finetuned-Summarization-DialogueDataset', choices=[0,1], default=1)
   parser.add_argument('-mdl', '-max_dialogue_length', type = int, help='max character length of dialogue summary', choices=[2048,4096], default=4096)
   parser.add_argument('-wa', '-which_act', type = int, help='act to summarize in ff7', choices=[1,2,3,4], default=1)
-  parser.add_argument('-pp', '-preprocess', help='which preprocess', choices=['none', 'no_name','name_explicit', 'context'], default='none')
+  parser.add_argument('-pp', '-preprocess', help='which preprocess', choices=['none', 'no_name','name_explicit'], default='none')
   
   return parser.parse_args()
 
